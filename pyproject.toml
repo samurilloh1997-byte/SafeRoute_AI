@@ -1,0 +1,21 @@
+[project]
+name = "saferoute-ai"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "folium>=0.20.0",
+    "load-dotenv>=0.1.0",
+    "networkx>=3.6.1",
+    "openai>=2.21.0",
+    "python-dotenv>=1.2.1",
+    "shapely>=2.1.2",
+    "streamlit>=1.54.0",
+    "streamlit-folium>=0.26.1",
+]
+
+[tool.uv.workspace]
+members = [
+    "saferoute-ia",
+]
