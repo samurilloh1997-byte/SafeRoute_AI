@@ -162,7 +162,7 @@ def aplicar_distribucion_afluencia(df, hora):
 @st.cache_resource # Usamos cache_resource para el grafo pickle
 def load_graph():
     # Cargar el grafo ya construido es 10 veces más rápido que crearlo
-    ruta_grafo = script_dir / "bases_datos_proy5" / "grafo_cdmx.pkl.gz"
+    ruta_grafo = script_dir / "Bases_datos_proy5" / "grafo_cdmx.pkl.gz"
     with gzip.open(ruta_grafo, "rb") as f:
         return pickle.load(f)
 
