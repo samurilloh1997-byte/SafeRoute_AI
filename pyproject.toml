@@ -9,6 +9,7 @@ dependencies = [
     "folium>=0.20.0",
     "geopandas>=1.1.2",
     "load-dotenv>=0.1.0",
+    "matplotlib>=3.10.8",
     "networkx>=3.6.1",
     "openai>=2.21.0",
     "optuna>=4.7.0",
