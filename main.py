@@ -59,15 +59,31 @@ st.write("Plataforma de análisis de riesgo y navegación inteligente para cicli
 ##########################################################################
 # --- CARGA Y PREPROCESAMIENTO ---
 ##########################################################################
+from pathlib import Path
+
+# Get the absolute path of the directory containing the main.py script
+script_dir = Path(__file__).parent
+# Construct the full absolute path to the data file
+file_path_red = script_dir / "bases_datos_proy5" / "ABT_raiz_red_ciclista_completa_cdmx.parquet"
+file_path_acc = script_dir / "bases_datos_proy5" / "Resultados" / "DB_Accidentes.parquet"
+file_path_inf = script_dir / "bases_datos_proy5" / "Resultados" / "DB_Infraestructura.parquet"
+file_path_cli = script_dir / "bases_datos_proy5" / "Resultados" / "DB_Clima.parquet"
+file_path_aflu = script_dir / "bases_datos_proy5" / "Resultados" / "DB_afluencia.parquet"
+
 
 @st.cache_data
 def load_and_preprocess():
     # Carga de archivos
-    df_red = pd.read_parquet("Bases_datos_proy5/ABT_raiz_red_ciclista_completa_cdmx.parquet")
-    df_acc = pd.read_parquet("bases_datos_proy5/Resultados/DB_Accidentes.parquet")
-    df_inf = pd.read_parquet("Bases_datos_proy5/Resultados/DB_Infraestructura.parquet")
-    df_cli = pd.read_parquet("Bases_datos_proy5/Resultados/DB_Clima.parquet")
-    df_aflu = pd.read_parquet("Bases_datos_proy5/Resultados/DB_afluencia.parquet")
+    # df_red = pd.read_parquet("./Bases_datos_proy5/ABT_raiz_red_ciclista_completa_cdmx.parquet")
+    # df_acc = pd.read_parquet("./bases_datos_proy5/Resultados/DB_Accidentes.parquet")
+    # df_inf = pd.read_parquet("./Bases_datos_proy5/Resultados/DB_Infraestructura.parquet")
+    # df_cli = pd.read_parquet("./Bases_datos_proy5/Resultados/DB_Clima.parquet")
+    # df_aflu = pd.read_parquet("./Bases_datos_proy5/Resultados/DB_afluencia.parquet")
+    df_red = pd.read_parquet(file_path_red)
+    df_acc = pd.read_parquet(file_path_acc)
+    df_inf = pd.read_parquet(file_path_inf)
+    df_cli = pd.read_parquet(file_path_cli)
+    df_aflu = pd.read_parquet(file_path_aflu)
     
     # Asegurar datetime
     df_acc['timestamp_fijo'] = pd.to_datetime(df_acc['timestamp_fijo'])
