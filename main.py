@@ -342,9 +342,41 @@ with tab2:
                 mapa_aflu = df_aflu_ruta.set_index('alcaldia')['Afluencia_Norm'].to_dict()
 
                 # 2. Actualización de Pesos con Velocidad
+                # for u, v, d in G.edges(data=True):
+                #     alc = d.get('alcaldia_name', 'CUAUHTEMOC')
+                #     v_max = d.get('maxspeed', 40)
+                    
+                #     # Penalización por velocidad (normalizada a 80km/h)
+                #     s_vel = (v_max / 80)**2
+                #     s_lluvia = (mapa_lluvia.get(alc, 0) / 100)
+                #     s_aflu = mapa_aflu.get(alc, 0)
+                    
+                #     # Fórmula Maestra Ajustada
+                #     score_g = (0.3 * avg_acc) + (0.2 * avg_inf) + (0.25 * s_vel) + (0.15 * s_lluvia) + (0.1 * s_aflu)
+                    
+                #     d['costo_seguro'] = d['weight'] * (1 + score_g)
+                #     d['score_seg_segmento'] = score_g
+                #     d['v_segmento'] = v_max
+
+                # 2. Actualización de Pesos con Velocidad (Corregido)
                 for u, v, d in G.edges(data=True):
                     alc = d.get('alcaldia_name', 'CUAUHTEMOC')
-                    v_max = d.get('maxspeed', 40)
+                    v_max_raw = d.get('maxspeed', 40) # Valor original que puede ser string o lista
+                    
+                    # --- LIMPIEZA DE v_max ---
+                    try:
+                        if isinstance(v_max_raw, list):
+                            # Si es una lista, tomamos el primer elemento y limpiamos
+                            v_max = float(str(v_max_raw[0]).split()[0])
+                        elif isinstance(v_max_raw, str):
+                            # Si es texto, quitamos "km/h" y convertimos a float
+                            v_max = float(v_max_raw.split()[0])
+                        else:
+                            # Si ya es número, aseguramos que sea float
+                            v_max = float(v_max_raw)
+                    except (ValueError, IndexError, TypeError):
+                        # Si algo falla (ej. texto vacío), asignamos una velocidad estándar de 40
+                        v_max = 40.0
                     
                     # Penalización por velocidad (normalizada a 80km/h)
                     s_vel = (v_max / 80)**2
