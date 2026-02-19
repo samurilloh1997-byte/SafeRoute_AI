@@ -49,6 +49,8 @@ from streamlit_folium import st_folium
 from folium.plugins import HeatMap
 from sklearn.preprocessing import QuantileTransformer
 from itertools import islice
+import pickle
+import gzip
 
 ########### CONFIGURACIÓN Y ESTILO ###########
 st.set_page_config(page_title="SafeRoute AI - Dashboard", page_icon=":bike:", layout="wide")
@@ -57,27 +59,27 @@ st.title("🚴 SafeRoute AI")
 st.write("Plataforma de análisis de riesgo y navegación inteligente para ciclistas.")
 
 
-import os
+# import os
 
-# --- BLOQUE DE EMERGENCIA PARA VER RUTAS ---
-st.sidebar.write("### 📂 Servidor de Archivos")
-raiz = os.getcwd()
-st.sidebar.write(f"Raíz: `{raiz}`")
+# # --- BLOQUE DE EMERGENCIA PARA VER RUTAS ---
+# st.sidebar.write("### 📂 Servidor de Archivos")
+# raiz = os.getcwd()
+# st.sidebar.write(f"Raíz: `{raiz}`")
 
-# Intentamos listar lo que hay en la carpeta de datos
-try:
-    # Cambia esto al nombre exacto que veas en GitHub (ej. "Bases_datos_proy5")
-    folder = "bases_datos_proy5" 
-    st.sidebar.write(f"Contenido de {folder}:", os.listdir(folder))
+# # Intentamos listar lo que hay en la carpeta de datos
+# try:
+#     # Cambia esto al nombre exacto que veas en GitHub (ej. "Bases_datos_proy5")
+#     folder = "bases_datos_proy5" 
+#     st.sidebar.write(f"Contenido de {folder}:", os.listdir(folder))
     
-    res_folder = os.path.join(folder, "Resultados")
-    if os.path.exists(res_folder):
-        st.sidebar.write("✅ Carpeta Resultados encontrada.")
-    else:
-        st.sidebar.error("❌ No existe 'Resultados'. ¿Quizá es 'resultados'?")
-except Exception as e:
-    st.sidebar.error(f"Error explorando: {e}")
-# -------------------------------------------
+#     res_folder = os.path.join(folder, "Resultados")
+#     if os.path.exists(res_folder):
+#         st.sidebar.write("✅ Carpeta Resultados encontrada.")
+#     else:
+#         st.sidebar.error("❌ No existe 'Resultados'. ¿Quizá es 'resultados'?")
+# except Exception as e:
+#     st.sidebar.error(f"Error explorando: {e}")
+# # -------------------------------------------
 
 
 
@@ -140,24 +142,32 @@ def aplicar_distribucion_afluencia(df, hora):
     return df_res
 
 # --- 1. CONSTRUCCIÓN DEL GRAFO (Optimizado) ---
-@st.cache_resource # Usamos cache_resource para objetos pesados como el Grafo
-def construir_grafo(df):
-    G = nx.DiGraph()
-    for _, row in df.iterrows():
-        geom = row['geometry']
-        if isinstance(geom, bytes):
-            geom = wkb.loads(geom)
+# @st.cache_resource # Usamos cache_resource para objetos pesados como el Grafo
+# def construir_grafo(df):
+#     G = nx.DiGraph()
+#     for _, row in df.iterrows():
+#         geom = row['geometry']
+#         if isinstance(geom, bytes):
+#             geom = wkb.loads(geom)
         
-        u = (row['lat_start'], row['lon_start'])
-        v = (row['lat_end'], row['lon_end'])
+#         u = (row['lat_start'], row['lon_start'])
+#         v = (row['lat_end'], row['lon_end'])
         
-        # Guardamos longitud y segment_id para cálculos posteriores
-        G.add_edge(u, v, weight=row['length'], geometry=geom, id=row['segment_id'], name=row['street_name'])
-        if not row['oneway']:
-            G.add_edge(v, u, weight=row['length'], geometry=geom, id=row['segment_id'], name=row['street_name'])
-    return G
+#         # Guardamos longitud y segment_id para cálculos posteriores
+#         G.add_edge(u, v, weight=row['length'], geometry=geom, id=row['segment_id'], name=row['street_name'])
+#         if not row['oneway']:
+#             G.add_edge(v, u, weight=row['length'], geometry=geom, id=row['segment_id'], name=row['street_name'])
+#     return G
 
-G = construir_grafo(df_red)
+@st.cache_resource # Usamos cache_resource para el grafo pickle
+def load_graph():
+    # Cargar el grafo ya construido es 10 veces más rápido que crearlo
+    ruta_grafo = script_dir / "bases_datos_proy5" / "grafo_cdmx.pkl.gz"
+    with gzip.open(ruta_grafo, "rb") as f:
+        return pickle.load(f)
+
+# G = construir_grafo(df_red)
+G = load_graph()
 # --- 2. PREPARACIÓN DE BUSCADORES ---
 # Creamos una lista de opciones: "Nombre de Calle (Lat, Lon)"
 opciones_nodos = df_red[['street_name', 'lat_start', 'lon_start']].drop_duplicates()
