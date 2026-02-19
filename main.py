@@ -90,11 +90,11 @@ import os
 # Get the absolute path of the directory containing the main.py script
 script_dir = Path(__file__).parent
 # Construct the full absolute path to the data file
-file_path_red = script_dir / "bases_datos_proy5" / "ABT_raiz_red_ciclista_completa_cdmx.parquet"
-file_path_acc = script_dir / "bases_datos_proy5" / "Resultados" / "DB_Accidentes.parquet"
-file_path_inf = script_dir / "bases_datos_proy5" / "Resultados" / "DB_Infraestructura.parquet"
-file_path_cli = script_dir / "bases_datos_proy5" / "Resultados" / "DB_Clima.parquet"
-file_path_aflu = script_dir / "bases_datos_proy5" / "Resultados" / "DB_afluencia.parquet"
+file_path_red = script_dir / "Bases_datos_proy5" / "ABT_raiz_red_ciclista_completa_cdmx.parquet"
+file_path_acc = script_dir / "Bases_datos_proy5" / "Resultados" / "DB_Accidentes.parquet"
+file_path_inf = script_dir / "Bases_datos_proy5" / "Resultados" / "DB_Infraestructura.parquet"
+file_path_cli = script_dir / "Bases_datos_proy5" / "Resultados" / "DB_Clima.parquet"
+file_path_aflu = script_dir / "Bases_datos_proy5" / "Resultados" / "DB_afluencia.parquet"
 
 
 @st.cache_data
