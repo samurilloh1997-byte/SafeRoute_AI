@@ -92,7 +92,7 @@ import os
 # Get the absolute path of the directory containing the main.py script
 script_dir = Path(__file__).parent
 # Construct the full absolute path to the data file
-file_path_red = script_dir / "Bases_datos_proy5" / "ABT_raiz_red_ciclista_completa_cdmx.parquet"
+# file_path_red = script_dir / "Bases_datos_proy5" / "ABT_raiz_red_ciclista_completa_cdmx.parquet"
 file_path_acc = script_dir / "Bases_datos_proy5" / "Resultados" / "DB_Accidentes.parquet"
 file_path_inf = script_dir / "Bases_datos_proy5" / "Resultados" / "DB_Infraestructura.parquet"
 file_path_cli = script_dir / "Bases_datos_proy5" / "Resultados" / "DB_Clima.parquet"
@@ -107,7 +107,7 @@ def load_and_preprocess():
     # df_inf = pd.read_parquet("./Bases_datos_proy5/Resultados/DB_Infraestructura.parquet")
     # df_cli = pd.read_parquet("./Bases_datos_proy5/Resultados/DB_Clima.parquet")
     # df_aflu = pd.read_parquet("./Bases_datos_proy5/Resultados/DB_afluencia.parquet")
-    df_red = pd.read_parquet(file_path_red)
+    # df_red = pd.read_parquet(file_path_red)
     df_acc = pd.read_parquet(file_path_acc)
     df_inf = pd.read_parquet(file_path_inf)
     df_cli = pd.read_parquet(file_path_cli)
@@ -127,9 +127,9 @@ def load_and_preprocess():
         norm_vals = qt.fit_transform(vals)
         df['Score_Final'] = 0.05 + (norm_vals * 0.90)
         
-    return df_acc, df_inf, df_cli, df_aflu, df_red
+    return df_acc, df_inf, df_cli, df_aflu
 
-df_acc, df_inf, df_cli, df_aflu, df_red = load_and_preprocess()
+df_acc, df_inf, df_cli, df_aflu = load_and_preprocess()
 
 # --- FUNCIONES DE APOYO ---
 def aplicar_distribucion_afluencia(df, hora):
@@ -168,11 +168,66 @@ def load_graph():
 
 # G = construir_grafo(df_red)
 G = load_graph()
+
+@st.cache_data
+def generar_opciones_desde_grafo(_G):
+    """
+    Extrae los nombres de calles y coordenadas directamente del grafo 
+    para evitar el uso de df_red y ahorrar memoria RAM.
+    """
+    nodos_lista = []
+    
+    # Recorremos todas las aristas para obtener el nombre de la calle y su nodo de inicio
+    for u, v, data in _G.edges(data=True):
+        # u es la tupla (latitud, longitud) del nodo inicial
+        lat, lon = u
+        nombre_calle = data.get('name', 'S/N')
+        
+        # Si el nombre es una lista (común en OSM), tomamos el primer elemento
+        if isinstance(nombre_calle, list):
+            nombre_calle = nombre_calle[0]
+            
+        label = f"{nombre_calle} ({lat}, {lon})"
+        nodos_lista.append({
+            'label': label, 
+            'lat_start': lat, 
+            'lon_start': lon
+        })
+    
+    # Creamos un DataFrame temporal para eliminar duplicados de etiquetas rápidamente
+    df_temp = pd.DataFrame(nodos_lista).drop_duplicates('label')
+    
+    # Retornamos el diccionario que esperan tus selectores
+    return df_temp.set_index('label')[['lat_start', 'lon_start']].to_dict('index')
+
+# Generamos el diccionario de nodos usando el Grafo cargado
+dict_nodos = generar_opciones_desde_grafo(G)
+
+@st.cache_data
+def obtener_catalogo_segmentos(_G):
+    """
+    Extrae la relación entre segment_id, nombre de calle y alcaldía
+    directamente desde el grafo.
+    """
+    data_list = []
+    for u, v, data in _G.edges(data=True):
+        data_list.append({
+            'segment_id': data.get('id'),
+            'street_name': data.get('name', 'S/N'),
+            'alcaldia_name': data.get('alcaldia_name', 'Desconocida')
+        })
+    
+    # Creamos el DataFrame y eliminamos duplicados de IDs de segmento
+    df_cat = pd.DataFrame(data_list).drop_duplicates('segment_id')
+    return df_cat
+
+# Generamos el catálogo una sola vez al inicio
+df_catalogo_calles = obtener_catalogo_segmentos(G)
 # --- 2. PREPARACIÓN DE BUSCADORES ---
 # Creamos una lista de opciones: "Nombre de Calle (Lat, Lon)"
-opciones_nodos = df_red[['street_name', 'lat_start', 'lon_start']].drop_duplicates()
-opciones_nodos['label'] = opciones_nodos['street_name'].fillna("S/N") + " (" + opciones_nodos['lat_start'].astype(str) + ", " + opciones_nodos['lon_start'].astype(str) + ")"
-dict_nodos = opciones_nodos.set_index('label')[['lat_start', 'lon_start']].to_dict('index')
+# opciones_nodos = df_red[['street_name', 'lat_start', 'lon_start']].drop_duplicates()
+# opciones_nodos['label'] = opciones_nodos['street_name'].fillna("S/N") + " (" + opciones_nodos['lat_start'].astype(str) + ", " + opciones_nodos['lon_start'].astype(str) + ")"
+# dict_nodos = opciones_nodos.set_index('label')[['lat_start', 'lon_start']].to_dict('index')
 
 ###########################################
 # --- CREACIÓN DE PESTAÑAS ---
@@ -224,7 +279,8 @@ with tab1:
     df_riesgo_vial['Score_Maestro'] = (df_riesgo_vial['Score_Final_acc'] * 0.6) + (df_riesgo_vial['Score_Final_inf'] * 0.4)
 
     # 3. Cruzamos con los nombres de las calles
-    top_calles = pd.merge(df_riesgo_vial, df_red[['segment_id', 'street_name', 'alcaldia_name']], on='segment_id')
+    # top_calles = pd.merge(df_riesgo_vial, df_red[['segment_id', 'street_name', 'alcaldia_name']], on='segment_id')
+    top_calles = pd.merge(df_riesgo_vial, df_catalogo_calles, on='segment_id')
 
     # Limpieza: eliminamos segmentos sin nombre de calle y ordenamos
     top_calles = top_calles[top_calles['street_name'].notna()]
