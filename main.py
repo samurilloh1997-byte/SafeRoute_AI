@@ -56,10 +56,36 @@ st.set_page_config(page_title="SafeRoute AI - Dashboard", page_icon=":bike:", la
 st.title("🚴 SafeRoute AI")
 st.write("Plataforma de análisis de riesgo y navegación inteligente para ciclistas.")
 
+
+import os
+
+# --- BLOQUE DE EMERGENCIA PARA VER RUTAS ---
+st.sidebar.write("### 📂 Servidor de Archivos")
+raiz = os.getcwd()
+st.sidebar.write(f"Raíz: `{raiz}`")
+
+# Intentamos listar lo que hay en la carpeta de datos
+try:
+    # Cambia esto al nombre exacto que veas en GitHub (ej. "Bases_datos_proy5")
+    folder = "bases_datos_proy5" 
+    st.sidebar.write(f"Contenido de {folder}:", os.listdir(folder))
+    
+    res_folder = os.path.join(folder, "Resultados")
+    if os.path.exists(res_folder):
+        st.sidebar.write("✅ Carpeta Resultados encontrada.")
+    else:
+        st.sidebar.error("❌ No existe 'Resultados'. ¿Quizá es 'resultados'?")
+except Exception as e:
+    st.sidebar.error(f"Error explorando: {e}")
+# -------------------------------------------
+
+
+
 ##########################################################################
 # --- CARGA Y PREPROCESAMIENTO ---
 ##########################################################################
 from pathlib import Path
+import os
 
 # Get the absolute path of the directory containing the main.py script
 script_dir = Path(__file__).parent
