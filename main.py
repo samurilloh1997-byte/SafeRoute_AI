@@ -12,11 +12,6 @@ import datetime
 from folium.plugins import HeatMap
 from sklearn.preprocessing import QuantileTransformer
 
-########### EJEMPLO SIMPLE DE STREAMLIT ###########
-# def main():
-#     print("Hello from saferoute-ai!")
-# if __name__ == "__main__":
-#     main()
 
 #################################################################################################
 # Forma de actualización de la información de la base de datos y del proyecto en general
@@ -102,12 +97,7 @@ file_path_aflu = script_dir / "Bases_datos_proy5" / "Resultados" / "DB_afluencia
 @st.cache_data
 def load_and_preprocess():
     # Carga de archivos
-    # df_red = pd.read_parquet("./Bases_datos_proy5/ABT_raiz_red_ciclista_completa_cdmx.parquet")
-    # df_acc = pd.read_parquet("./bases_datos_proy5/Resultados/DB_Accidentes.parquet")
-    # df_inf = pd.read_parquet("./Bases_datos_proy5/Resultados/DB_Infraestructura.parquet")
-    # df_cli = pd.read_parquet("./Bases_datos_proy5/Resultados/DB_Clima.parquet")
-    # df_aflu = pd.read_parquet("./Bases_datos_proy5/Resultados/DB_afluencia.parquet")
-    # df_red = pd.read_parquet(file_path_red)
+    
     df_acc = pd.read_parquet(file_path_acc)
     df_inf = pd.read_parquet(file_path_inf)
     df_cli = pd.read_parquet(file_path_cli)
