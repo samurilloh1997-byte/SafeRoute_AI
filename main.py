@@ -11,6 +11,17 @@ import numpy as np
 import datetime
 from folium.plugins import HeatMap
 from sklearn.preprocessing import QuantileTransformer
+import streamlit as st
+import folium
+import pandas as pd
+import numpy as np
+import datetime
+from streamlit_folium import st_folium
+from folium.plugins import HeatMap
+from sklearn.preprocessing import QuantileTransformer
+from itertools import islice
+import pickle
+import gzip
 
 
 #################################################################################################
@@ -34,18 +45,6 @@ from sklearn.preprocessing import QuantileTransformer
 # aplicación de Streamlit lista para desplegar.
 #################################################################################################
 
-
-import streamlit as st
-import folium
-import pandas as pd
-import numpy as np
-import datetime
-from streamlit_folium import st_folium
-from folium.plugins import HeatMap
-from sklearn.preprocessing import QuantileTransformer
-from itertools import islice
-import pickle
-import gzip
 
 ########### CONFIGURACIÓN Y ESTILO ###########
 st.set_page_config(page_title="SafeRoute AI - Dashboard", page_icon=":bike:", layout="wide")
@@ -230,110 +229,58 @@ tab1, tab2 = st.tabs(["📊 Análisis de Riesgo", "🗺️ Planeación de Ruta"]
 with tab1:
     st.header("Estadísticas y Puntos Críticos")
     
-    # Filtros dentro de la pestaña para limpieza visual
     c_f1, c_f2 = st.columns(2)
     with c_f1:
-        fecha_sel = st.date_input("Fecha de Análisis", 
-                                 value=datetime.date(2024, 1, 1),
-                                 min_value=datetime.date(2024, 1, 1), 
-                                 max_value=datetime.date(2026, 2, 21),
-                                 key="fecha_t1")
+        fecha_sel = st.date_input("Fecha", value=datetime.date(2024, 1, 1), key="f1")
     with c_f2:
-        hora_sel = st.slider("Hora del día", 0, 23, 12, key="hora_t1")
+        hora_sel = st.slider("Hora", 0, 23, 12, key="h1")
 
-    # Lógica de Filtrado
+    # Filtrado
     mes_objetivo = fecha_sel.month
     df_acc_f = df_acc[(df_acc['timestamp_fijo'].dt.month == mes_objetivo) & (df_acc['timestamp_fijo'].dt.hour == hora_sel)]
     df_inf_f = df_inf[(df_inf['timestamp_fijo'].dt.month == mes_objetivo) & (df_inf['timestamp_fijo'].dt.hour == hora_sel)]
     df_cli_f = df_cli[(df_cli['time'].dt.date == fecha_sel) & (df_cli['time'].dt.hour == hora_sel)]
     df_aflu_resumen = aplicar_distribucion_afluencia(df_aflu, hora_sel)
 
-    # Métricas Globales
-    avg_acc = df_acc_f['Score_Final'].mean() if not df_acc_f.empty else 0.05
-    avg_inf = df_inf_f['Score_Final'].mean() if not df_inf_f.empty else 0.05
-    avg_aflu = df_aflu_resumen['Afluencia_Estimada'].mean() if not df_aflu_resumen.empty else 0
-    avg_lluvia = df_cli_f['precipitation_probability'].mean() if not df_cli_f.empty else 0
-
-    #=============================================
-    # --- CÁLCULO DE TOP 10 CALLES PELIGROSAS ---
-    #=============================================
-
-    # 1. Agrupamos el riesgo filtrado por segmento
+    # Ranking Top 10
     resumen_acc = df_acc_f.groupby('segment_id')['Score_Final'].mean().reset_index()
     resumen_inf = df_inf_f.groupby('segment_id')['Score_Final'].mean().reset_index()
-
-    # 2. Unimos ambos riesgos (Score Maestro)
     df_riesgo_vial = pd.merge(resumen_acc, resumen_inf, on='segment_id', how='outer', suffixes=('_acc', '_inf')).fillna(0.05)
-
-    # Ponderación: 60% accidentes, 40% infraestructura (puedes ajustar esto)
     df_riesgo_vial['Score_Maestro'] = (df_riesgo_vial['Score_Final_acc'] * 0.6) + (df_riesgo_vial['Score_Final_inf'] * 0.4)
-
-    # 3. Cruzamos con los nombres de las calles
-    # top_calles = pd.merge(df_riesgo_vial, df_red[['segment_id', 'street_name', 'alcaldia_name']], on='segment_id')
+    
+    # USAMOS EL CATÁLOGO EXTRAÍDO DEL GRAFO
     top_calles = pd.merge(df_riesgo_vial, df_catalogo_calles, on='segment_id')
-
-    # Limpieza: eliminamos segmentos sin nombre de calle y ordenamos
-    top_calles = top_calles[top_calles['street_name'].notna()]
     top_10_ranking = top_calles.sort_values(by='Score_Maestro', ascending=False).head(10)
 
-
-
+    # Métricas
+    avg_acc = df_acc_f['Score_Final'].mean() if not df_acc_f.empty else 0.5
+    avg_inf = df_inf_f['Score_Final'].mean() if not df_inf_f.empty else 0.5
+    
     st.write("---")
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("🚨 Riesgo Accidentes", f"{avg_acc:.2f}", delta=f"{((avg_acc-0.5)/0.5)*100:.1f}% vs Prom", delta_color="inverse")
-    m2.metric("🛠️ Riesgo Infra.", f"{avg_inf:.2f}", delta=f"{((avg_inf-0.5)/0.5)*100:.1f}% vs Prom", delta_color="inverse")
-    m3.metric("👥 Afluencia Prom.", f"{int(avg_aflu):,}")
-    m4.metric("🌧️ Prob. Lluvia", f"{avg_lluvia:.1f}%")
-    st.write("---")
+    m1.metric("🚨 Riesgo Accidentes", f"{avg_acc:.2f}")
+    m2.metric("🛠️ Riesgo Infra.", f"{avg_inf:.2f}")
+    m3.metric("👥 Afluencia", f"{int(df_aflu_resumen['Afluencia_Estimada'].mean()):,}")
+    m4.metric("🌧️ Prob. Lluvia", f"{df_cli_f['precipitation_probability'].mean():.1f}%")
 
-    # 2. Mapas de Score (Fila 1)
-    st.markdown("### Distribución de Riesgo (Scores)")
+    # Mapas (con returned_objects=[] para evitar recargas infinitas)
+    st.markdown("### Distribución de Riesgo")
     col_m1, col_m2 = st.columns(2)
-    
     with col_m1:
-        st.caption("🚨 Riesgo por Siniestralidad Vial")
-        m1 = folium.Map(location=[19.4326, -99.1332], zoom_start=11, tiles='cartodbdark_matter')
-        if not df_acc_f.empty:
-            # Heatmap pesado por el Score_Final
-            HeatMap(df_acc_f[['latitud', 'longitud', 'Score_Final']].values.tolist(), radius=8, blur=10).add_to(m1)
-        st_folium(m1, width=None, height=400, key="map_acc")
-
+        st.caption("🚨 Riesgo Vial")
+        m_a = folium.Map(location=[19.4326, -99.1332], zoom_start=11, tiles='cartodbdark_matter')
+        HeatMap(df_acc_f[['latitud', 'longitud', 'Score_Final']].values.tolist()).add_to(m_a)
+        st_folium(m_a, height=400, width=None, returned_objects=[], key="m_acc")
     with col_m2:
-        st.caption("🛠️ Riesgo por Infraestructura Urbana")
-        m2 = folium.Map(location=[19.4326, -99.1332], zoom_start=11, tiles='cartodbdark_matter')
-        if not df_inf_f.empty:
-            HeatMap(df_inf_f[['latitud', 'longitud', 'Score_Final']].values.tolist(), radius=8, blur=10, gradient={0.2:'blue', 0.5:'yellow', 1:'orange'}).add_to(m2)
-        st_folium(m2, width=None, height=400, key="map_inf")
+        st.caption("🛠️ Riesgo Infraestructura")
+        m_i = folium.Map(location=[19.4326, -99.1332], zoom_start=11, tiles='cartodbdark_matter')
+        HeatMap(df_inf_f[['latitud', 'longitud', 'Score_Final']].values.tolist()).add_to(m_i)
+        st_folium(m_i, height=400, width=None, returned_objects=[], key="m_inf")
 
-    # 3. Mapa de Calor Incidentes Ciclistas (Fila 2 - Ancho Completo)
-    st.write("---")
-    st.markdown("### Mapa de Concentración: Incidentes Ciclistas")
-    m3 = folium.Map(location=[19.4326, -99.1332], zoom_start=11, tiles='cartodbdark_matter')
-    if not df_acc_f.empty:
-        # Aquí solo mapeamos la densidad de puntos donde hubo incidentes ciclistas
-        HeatMap(df_acc_f[df_acc_f['inc_Ciclista']>0][['latitud', 'longitud']].values.tolist(), radius=15, blur=20, gradient={0.4:'blue', 0.6:'cyan', 0.7:'lime', 1:'red'}).add_to(m3)
-    st_folium(m3, width=1500, height=500, key="map_heat_full")
-
-    # 4. Gráficos Comparativos (Fila 3)
-    st.write("---")
-    col_g1, col_g2 = st.columns(2)
-    with col_g1:
-        st.markdown("#### Probabilidad de Lluvia (%)")
-        st.bar_chart(df_cli_f.set_index('alcaldia')['precipitation_probability'], height=300)
-    with col_g2:
-        st.markdown("#### Afluencia Estimada (Pasajeros)")
-        st.bar_chart(df_aflu_resumen.set_index('alcaldia')['Afluencia_Estimada'], height=300)
-
-    # 5. Ranking de Peligrosidad (Fila Final)
     st.write("---")
     st.markdown("### 🏆 Top 10: Segmentos con Mayor Riesgo Combinado")
-    st.info("Este ranking pondera la siniestralidad histórica (60%) y las fallas de infraestructura reportadas (40%).")
-    
-    # Formateo para mostrar a los usuarios
-    ranking_display = top_10_ranking[['street_name', 'alcaldia_name', 'Score_Maestro', 'Score_Final_acc', 'Score_Final_inf']].copy()
-    ranking_display.columns = ['Calle', 'Alcaldía', 'Riesgo Total', 'Riesgo Accidente', 'Riesgo Infra.']
-    
-    # st.dataframe(ranking_display.style.background_gradient(cmap='YlOrRd', subset=['Riesgo Total']), use_container_width=True)
+    ranking_display = top_10_ranking[['street_name', 'alcaldia_name', 'Score_Maestro']].copy()
+    ranking_display.columns = ['Calle', 'Alcaldía', 'Riesgo Total']
     st.dataframe(ranking_display.style.background_gradient(cmap='YlOrRd'), width='stretch')
 
 #############################################################################################
