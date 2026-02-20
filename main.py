@@ -333,7 +333,8 @@ with tab1:
     ranking_display = top_10_ranking[['street_name', 'alcaldia_name', 'Score_Maestro', 'Score_Final_acc', 'Score_Final_inf']].copy()
     ranking_display.columns = ['Calle', 'Alcaldía', 'Riesgo Total', 'Riesgo Accidente', 'Riesgo Infra.']
     
-    st.dataframe(ranking_display.style.background_gradient(cmap='YlOrRd', subset=['Riesgo Total']), use_container_width=True)
+    # st.dataframe(ranking_display.style.background_gradient(cmap='YlOrRd', subset=['Riesgo Total']), use_container_width=True)
+    st.dataframe(ranking_display.style.background_gradient(cmap='YlOrRd'), width='stretch')
 
 #############################################################################################
 # 3er intento real de la segunda pestaña
